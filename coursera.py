@@ -17,9 +17,12 @@ def get_console_arguments():
 
 
 def download_course_info(courses_info_url):
-    coursera_response = requests.get(courses_info_url)
-    course_info = coursera_response.text
-    return course_info
+    try:
+        coursera_response = requests.get(courses_info_url)
+        course_info = coursera_response.text
+        return course_info
+    except requests.exceptions.ConnectionError:
+        return None
 
 
 def get_links_of_random_courses(xml_info_string, courses_number):
@@ -71,6 +74,8 @@ def get_all_courses_list(courses_links):
     course_list = []
     for course_link in courses_links:
         course_page = download_course_info(course_link)
+        if not course_page:
+            continue
         course_info = get_course_info_from_html(course_page, course_link)
         course_list.append(course_info)
     return course_list
@@ -120,6 +125,8 @@ if __name__ == '__main__':
     console_arguments = get_console_arguments()
     output_path = console_arguments.output_file_path
     courses_xml_info = download_course_info(coursera_info_url)
+    if not courses_xml_info:
+        exit('Can not connect to {}'.format(coursera_info_url))
     list_of_course_links = get_links_of_random_courses(
         courses_xml_info,
         number_of_courses
