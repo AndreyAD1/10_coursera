@@ -10,17 +10,18 @@ def get_console_arguments():
     parser.add_argument(
         '-o',
         '--output_file_path',
+        default='courses_info.xlsx',
         help='Enter the full path of output file or its name only.'
     )
     arguments = parser.parse_args()
     return arguments
 
 
-def download_course_info(courses_info_url):
+def get_html_page(courses_info_url):
     try:
         coursera_response = requests.get(courses_info_url)
-        course_info = coursera_response.text
-        return course_info
+        course_html_page = coursera_response.text
+        return course_html_page
     except requests.exceptions.ConnectionError:
         return None
 
@@ -49,7 +50,7 @@ def get_course_info_from_html(page, url):
     week_items = bs_object.find('div', class_='rc-WeekView')
     if week_items:
         weeks_number = len(week_items.contents)
-    if not week_items:
+    else:
         weeks_number = None
     course_mark_html_item = bs_object.find(
             'div',
@@ -57,7 +58,7 @@ def get_course_info_from_html(page, url):
         )
     if course_mark_html_item:
         course_mean_mark = course_mark_html_item.span.get_text()
-    if not course_mark_html_item:
+    else:
         course_mean_mark = None
     course_info_dict = {
         'course_title': course_title,
@@ -73,7 +74,7 @@ def get_course_info_from_html(page, url):
 def get_all_courses_list(courses_links):
     course_list = []
     for course_link in courses_links:
-        course_page = download_course_info(course_link)
+        course_page = get_html_page(course_link)
         if not course_page:
             continue
         course_info = get_course_info_from_html(course_page, course_link)
@@ -107,15 +108,12 @@ def write_course_info(table, course_dict):
     table.append(course_features)
 
 
-def output_courses_info_to_xlsx(path, courses_info):
+def output_courses_info_to_xlsx(output_file_path, courses_info):
     workbook = Workbook()
     worksheet = workbook.active
     write_column_names(worksheet)
     for course in courses_info:
         write_course_info(worksheet, course)
-    output_file_path = path
-    if not output_file_path:
-        output_file_path = 'courses_info.xlsx'
     workbook.save(output_file_path)
 
 
@@ -124,7 +122,7 @@ if __name__ == '__main__':
     coursera_info_url = 'https://www.coursera.org/sitemap~www~courses.xml'
     console_arguments = get_console_arguments()
     output_path = console_arguments.output_file_path
-    courses_xml_info = download_course_info(coursera_info_url)
+    courses_xml_info = get_html_page(coursera_info_url)
     if not courses_xml_info:
         exit('Can not connect to {}'.format(coursera_info_url))
     list_of_course_links = get_links_of_random_courses(
